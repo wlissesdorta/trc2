@@ -1,143 +1,126 @@
-# Importação das bibliotecas
+
 import streamlit as st
-import numpy as np
+import math
+from sympy import symbols, Eq, solve
+import pandas as pd
 import plotly.graph_objects as go
-import pandas as pd  # Importando pandas para criar tabelas de dados
 
-# Título do aplicativo Streamlit
-st.title("Trocador de Calor")
+# Título do aplicativo
+st.title("Simulação de Trocador de Calor")
 
-# Seção no painel lateral para as entradas do fluido frio
-st.sidebar.header("Fluido Frio")
-Tf_e = st.sidebar.number_input("Temperatura de Entrada (°C)", value=30.0, key="Tf_e")
-mf = st.sidebar.number_input("Vazão Mássica (kg/s)", value=0.2, key="mf")
-Cp_f = st.sidebar.number_input("Capacidade Térmica Específica (kJ/kg.K)", value=4.171, format="%.3f", key="Cp_f")
+# Seção para entrada de dados
+st.sidebar.header("Parâmetros do Fluido Externo (Anel) - Etilenoglicol")
+m_a = st.sidebar.number_input("Vazão mássica (kg/s)", value=3.78, format="%.2f")
+T_a = st.sidebar.number_input("Temperatura de entrada (°C)", value=32.0, format="%.2f")
+rho_a = st.sidebar.number_input("Densidade (kg/m³)", value=1084.0, format="%.2f")
+cp_a = st.sidebar.number_input("Capacidade calorífica específica (J/kg.K)", value=2583.0, format="%.2f")
+k_a = st.sidebar.number_input("Condutividade térmica (W/m.K)", value=0.26, format="%.2f")
+v_a = st.sidebar.number_input("Viscosidade cinemática (m²/s)", value=4.32e-6, format="%.10f")
+Pr_a = st.sidebar.number_input("Número de Prandtl", value=46.52, format="%.2f")
 
-# Seção no painel lateral para as entradas do fluido quente
-st.sidebar.header("Fluido Quente")
-Tq_e = st.sidebar.number_input("Temperatura de Entrada (°C)", value=100.0, key="Tq_e")
-mq = st.sidebar.number_input("Vazão Mássica (kg/s)", value=0.1, key="mq")
-Cp_q = st.sidebar.number_input("Capacidade Térmica Específica (kJ/kg.K)", value=2.131, format="%.3f", key="Cp_q")
+st.sidebar.header("Parâmetros do Fluido Interno (Tubo) - Água")
+m_t = st.sidebar.number_input("Vazão mássica (kg/s)", value=0.6, format="%.2f")
+T_t = st.sidebar.number_input("Temperatura de entrada (°C)", value=80.0, format="%.2f")
+rho_t = st.sidebar.number_input("Densidade (kg/m³)", value=995.0, format="%.2f")
+cp_t = st.sidebar.number_input("Capacidade calorífica específica (J/kg.K)", value=4178.6, format="%.2f")
+k_t = st.sidebar.number_input("Condutividade térmica (W/m.K)", value=0.622, format="%.2f")
+v_t = st.sidebar.number_input("Viscosidade cinemática (m²/s)", value=7.276e-7, format="%.10f")
+Pr_t = st.sidebar.number_input("Número de Prandtl", value=4.87, format="%.2f")
 
-# Seção no painel lateral para as configurações do trocador de calor
-st.sidebar.header("Configurações do Trocador")
-L = st.sidebar.number_input("Comprimento (m)", value=65.90, format="%.3f", key="L")
-D = st.sidebar.number_input("Diâmetro (mm)", value=25.00, key="D")
-N = st.sidebar.number_input("Número de Elementos", value=30, key="N")
-U = st.sidebar.number_input("U (W/m².K)", value=38.10, key="U")
+st.sidebar.header("Parâmetros do Trocador de Calor")
+Di_a = st.sidebar.number_input("Diâmetro interno do anel (m)", value=0.051, format="%.4f")
+Di_t = st.sidebar.number_input("Diâmetro interno do tubo (m)", value=0.0328, format="%.4f")
+De_t = st.sidebar.number_input("Diâmetro externo do tubo (m)", value=0.0328, format="%.4f")
+L = st.sidebar.number_input("Comprimento do trocador (m)", value=20.0, format="%.2f")
+N = st.sidebar.number_input("Número de segmentos", value=10)
 
-try:
-    # Verificar se algum dos valores é zero para evitar divisão por zero
-    if N == 0 or mq == 0 or mf == 0:
-        raise ZeroDivisionError("Valor inválido, verifique!")
+# O restante do código permanece inalterado...
 
-    # Cálculos preliminares
-    D = D / 1000  # Conversão do diâmetro de milímetros para metros
-    Cp_f *= 1000  # Conversão da capacidade térmica específica de kJ/kg.K para J/kg.K
-    Cp_q *= 1000  # Conversão da capacidade térmica específica de kJ/kg.K para J/kg.K
-    dx = L / N  # Comprimento de cada segmento
 
-    # Inicialização das temperaturas ao longo do trocador
-    Tq = np.zeros(N + 1)  # Temperaturas do fluido quente
-    Tf = np.zeros(N + 1)  # Temperaturas do fluido frio
+# Cálculos
+A_t = (math.pi * Di_t**2) / 4
+A_a = (math.pi * (Di_a**2 - De_t**2)) / 4
+V_t = m_t / (rho_t * A_t)
+V_a = m_a / (rho_a * A_a)
+D_h = Di_a - De_t
+D_eq = (Di_a**2 - De_t**2) / De_t
+Re_t = V_t * Di_t / v_t
+Re_a = V_a * D_eq / v_a
+Nu_t = 0.023 * Re_t**(4/5) * Pr_t**0.3
+Nu_a = 0.023 * Re_a**(4/5) * Pr_a**0.4
+h_t = Nu_t * k_t / Di_t
+h_a = Nu_a * k_a / D_eq
+U = 1 / ((1 / h_t) + (1 / h_a))
+dx = L / N
+A = math.pi * Di_t * dx
+C_q = m_t * cp_t
+C_f = m_a * cp_a
 
-    # Condições de contorno
-    Tq[0] = Tq_e  # Temperatura de entrada do fluido quente
-    Tf[N] = Tf_e  # Temperatura de entrada do fluido frio
+# Criação de equações para resolver o sistema
+T_quente = symbols('T_quente0:%d' % (N + 1))
+T_frio = symbols('T_frio0:%d' % (N + 1))
+Equacoes_Quente = []
+Equacoes_Frio = []
 
-    # Cálculo dos fatores de troca de calor
-    Aq = U * np.pi * D * dx / (Cp_q * mq)  # Fator para o fluido quente
-    Af = U * np.pi * D * dx / (Cp_f * mf)  # Fator para o fluido frio
+for i in range(N):
+    eq_q = Eq(C_q * (T_quente[i] - T_quente[i + 1]), 
+              ((U * A) / 2) * (T_quente[i] + T_quente[i + 1] - T_frio[i] - T_frio[i + 1]))
+    eq_f = Eq(-C_f * (T_frio[i + 1] - T_frio[i]), 
+              ((U * A) / 2) * (T_quente[i] + T_quente[i + 1] - T_frio[i] - T_frio[i + 1]))
+    Equacoes_Quente.append(eq_q)
+    Equacoes_Frio.append(eq_f)
 
-    # Loop para calcular as temperaturas em cada segmento do trocador
-    for i in range(N):
-        # Cálculo das novas temperaturas usando diferenças finitas
-        Tq_new = (Tq[i] + Aq * Tf[N - i]) / (1 + Aq)
-        Tf_new = (Tf[N - i] + Af * Tq[i]) / (1 + Af)
-        Tq[i + 1] = Tq_new
-        Tf[N - i - 1] = Tf_new
+Equacoes_Quente = [eq.subs({T_quente[0]: T_t, T_frio[N]: T_a}) for eq in Equacoes_Quente]
+Equacoes_Frio = [eq.subs({T_quente[0]: T_t, T_frio[N]: T_a}) for eq in Equacoes_Frio]
 
-    # Ajustando o array x para ter o mesmo tamanho que Tq e Tf
-    x = np.linspace(0, L, N + 1)
+solucao = solve(Equacoes_Quente + Equacoes_Frio, T_quente + T_frio)
 
-    # Criação do gráfico interativo usando Plotly
-    fig = go.Figure()
+temperaturas_quente = [T_t] + [solucao[T_quente[i]] for i in range(1, N + 1)]
+temperaturas_frio = [solucao[T_frio[i]] for i in range(N)] + [T_a]
 
-    # Adicionando a curva de temperatura do fluido quente ao gráfico
-    fig.add_trace(go.Scatter(
-        x=x,
-        y=Tq,
-        mode='lines+markers',
-        name='Fluido Quente',
-        line=dict(color='red'),
-        hovertemplate='Comprimento: %{x:.2f} m<br>Temperatura: %{y:.2f} °C'
-    ))
+# Convertendo os valores simbólicos para floats
+temperaturas_quente = [float(T_t)] + [float(solucao[T_quente[i]]) for i in range(1, N + 1)]
+temperaturas_frio = [float(solucao[T_frio[i]]) for i in range(N)] + [float(T_a)]
 
-    # Adicionando a curva de temperatura do fluido frio ao gráfico
-    fig.add_trace(go.Scatter(
-        x=x,
-        y=Tf,
-        mode='lines+markers',
-        name='Fluido Frio',
-        line=dict(color='blue'),
-        hovertemplate='Comprimento: %{x:.2f} m<br>Temperatura: %{y:.2f} °C'
-    ))
+# Criação do DataFrame
+df = pd.DataFrame({
+    'Segmento': range(N + 1),
+    'Temperatura Quente (°C)': temperaturas_quente,
+    'Temperatura Frio (°C)': temperaturas_frio
+})
+df['L (m)'] = df['Segmento'] * L / N
 
-    # Configuração do layout do gráfico
-    fig.update_layout(
-        title='Distribuição de Temperatura ao Longo do Trocador de Calor',
-        xaxis_title='Comprimento do Trocador (m)',
-        yaxis_title='Temperatura (°C)',
-        hovermode='x unified',
-        template='plotly_white'
-    )
 
-    # Exibindo o gráfico no aplicativo Streamlit
-    st.plotly_chart(fig, use_container_width=True)
 
-    # Criando uma tabela para os valores de entrada
-    input_data = {
-        "Parâmetro": [
-            "Temperatura de Entrada Fluido Frio (°C)",
-            "Vazão Mássica Fluido Frio (kg/s)",
-            "Capacidade Térmica Específica Fluido Frio (kJ/kg.K)",
-            "Temperatura de Entrada Fluido Quente (°C)",
-            "Vazão Mássica Fluido Quente (kg/s)",
-            "Capacidade Térmica Específica Fluido Quente (kJ/kg.K)",
-            "Comprimento do Trocador (m)",
-            "Diâmetro do Trocador (mm)",
-            "Número de Elementos",
-            "Coeficiente Global de Transferência de Calor (U, W/m².K)"
-        ],
-        "Valor": [
-            Tf_e,
-            mf,
-            Cp_f / 1000,  # Convertendo de J/kg.K para kJ/kg.K
-            Tq_e,
-            mq,
-            Cp_q / 1000,  # Convertendo de J/kg.K para kJ/kg.K
-            L,
-            D * 1000,  # Convertendo de metros para milímetros
-            N,
-            U
-        ]
-    }
+# Criação do gráfico
+fig = go.Figure()
 
-    # Exibindo a tabela de valores de entrada
-    st.subheader("Valores de Entrada")
-    st.table(pd.DataFrame(input_data))
+# Trace para Temperatura Quente
+fig.add_trace(go.Scatter(
+    x=df['L (m)'], 
+    y=df['Temperatura Quente (°C)'], 
+    mode='lines+markers', 
+    name='Temperatura Quente (°C)',
+    line=dict(color='red'),
+    hovertemplate='%{x:.2f} m<br> %{y:.2f} °C'
+))
 
-    # Criando uma tabela para os arrays de temperaturas
-    temp_data = {
-        "Posição (m)": x,
-        "Temperatura Fluido Quente (°C)": Tq,
-        "Temperatura Fluido Frio (°C)": Tf
-    }
+# Trace para Temperatura Frio
+fig.add_trace(go.Scatter(
+    x=df['L (m)'], 
+    y=df['Temperatura Frio (°C)'], 
+    mode='lines+markers', 
+    name='Temperatura Frio (°C)',
+    line=dict(color='blue'),
+    hovertemplate='%{x:.2f} m<br>%{y:.2f} °C'
+))
 
-    # Exibindo a tabela dos arrays de temperaturas
-    st.subheader("Distribuição de Temperaturas ao Longo do Trocador")
-    st.table(pd.DataFrame(temp_data))
+fig.update_layout(
+    title='Temperaturas ao Longo do Trocador de Calor',
+    xaxis_title='Distância (m)',
+    yaxis_title='Temperatura (°C)',
+    hovermode="x"  # Isso permite que ambos os valores sejam exibidos simultaneamente ao passar o mouse
+)
 
-# Tratamento de exceção para divisão por zero
-except ZeroDivisionError as e:
-    st.error(str(e))
+st.plotly_chart(fig)
+
