@@ -1,1 +1,4 @@
 plotly
+sympy
+math
+pandas
