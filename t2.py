@@ -14,7 +14,7 @@ m_a = st.sidebar.number_input("Vazão mássica (kg/s)", value=3.78, format="%.2f
 T_a = st.sidebar.number_input("Temperatura de entrada (°C)", value=32.0, format="%.2f")
 rho_a = st.sidebar.number_input("Densidade (kg/m³)", value=1084.0, format="%.2f")
 cp_a = st.sidebar.number_input("Capacidade calorífica específica (J/kg.K)", value=2583.0, format="%.2f")
-k_a = st.sidebar.number_input("Condutividade térmica (W/m.K)", value=0.26, format="%.2f")
+k_a = st.sidebar.number_input("Condutividade térmica (W/m.K)", value=0.26, format="%.4f")
 v_a = st.sidebar.number_input("Viscosidade cinemática (m²/s)", value=4.32e-6, format="%.11f")
 Pr_a = st.sidebar.number_input("Número de Prandtl", value=46.52, format="%.2f")
 
@@ -23,7 +23,7 @@ m_t = st.sidebar.number_input("Vazão mássica (kg/s)", value=0.6, format="%.2f"
 T_t = st.sidebar.number_input("Temperatura de entrada (°C)", value=80.0, format="%.2f")
 rho_t = st.sidebar.number_input("Densidade (kg/m³)", value=995.0, format="%.2f")
 cp_t = st.sidebar.number_input("Capacidade calorífica específica (J/kg.K)", value=4178.6, format="%.2f")
-k_t = st.sidebar.number_input("Condutividade térmica (W/m.K)", value=0.622, format="%.2f")
+k_t = st.sidebar.number_input("Condutividade térmica (W/m.K)", value=0.622, format="%.4f")
 v_t = st.sidebar.number_input("Viscosidade cinemática (m²/s)", value=7.276e-7, format="%.11f")
 Pr_t = st.sidebar.number_input("Número de Prandtl", value=4.87, format="%.2f")
 
